@@ -35,7 +35,7 @@ class UserGetSerializer(UserSerializer):
         read_only_fields = ('id', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
-        user = self.context.get('request').user
+        user = self.request.user
         return user.is_authenticated and obj.subscription.filter(
             user=user
         ).exists()
@@ -101,7 +101,7 @@ class SubcriptionSerializer(UserGetSerializer):
 
     def get_recipes(self, user):
         request = self.context.get('request')
-        queryset = Recipe.objects.filter(author=user)
+        queryset = user.recipes
         if request and not request.user.is_anonymous:
             recipes_limit = request.query_params.get('recipes_limit')
             if recipes_limit:
@@ -114,7 +114,7 @@ class SubcriptionSerializer(UserGetSerializer):
         ).data
 
     def get_recipes_count(self, user):
-        return Recipe.objects.filter(author=user).count()
+        return user.recipes.count()
 
 
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
@@ -124,9 +124,10 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
         fields = ('user', 'author')
 
     def validate(self, data):
-        user = self.context['request'].user
+        request = self.context['request']
+        user = request.user
         author = data.get('author')
-        if self.context['request'].method == 'POST':
+        if request.method == 'POST':
             if author == user:
                 raise exceptions.ValidationError(
                     ME_SUBSCRIPTION_VALIDATION_ERROR
@@ -137,7 +138,7 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
                 raise exceptions.ValidationError(
                     RE_SUBSCRIPTION_VALIDATION_ERROR
                 )
-        if self.context['request'].method == 'DELETE':
+        if request.method == 'DELETE':
             try:
                 Subscription.objects.get(
                     author=author, user=user
@@ -254,8 +255,8 @@ class RecipePostSerializer(serializers.ModelSerializer):
             raise exceptions.ValidationError(
                 {'ingredients': 'Должен быть хотя бы один ингредиент.'}
             )
-        ingredient_id = [ingredient['id'] for ingredient in ingredients_data]
-        if len(ingredient_id) != len(set(ingredient_id)):
+        ingredient_ids = [ingredient['id'] for ingredient in ingredients_data]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
             raise exceptions.ValidationError(
                 {'ingredients': 'Ингредиенты не могут повторяться.'}
             )
@@ -317,16 +318,17 @@ class FavoriteSerializer(serializers.ModelSerializer):
         fields = ('user', 'recipe')
 
     def validate(self, data):
-        user = self.context['request'].user
+        request = self.context['request']
+        user = request.user
         recipe = data['recipe']
         favorite = user.favorite_user.filter(
             recipe=recipe
         ).exists()
-        if self.context['request'].method == 'POST' and favorite:
+        if request.method == 'POST' and favorite:
             raise serializers.ValidationError(
                 'Рецепт уже в избранном'
             )
-        if self.context['request'].method == 'DELETE' and not favorite:
+        if request.method == 'DELETE' and not favorite:
             raise serializers.ValidationError(
                 'Ошибка. Рецепт уже был удалён.'
             )
@@ -345,16 +347,17 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         fields = ('user', 'recipe')
 
     def validate(self, data):
-        user = self.context['request'].user
+        request = self.context['request']
+        user = request.user
         recipe = data['recipe']
         shopping_cart = user.shopping_cart.filter(
             recipe=recipe
         ).exists()
-        if self.context['request'].method == 'POST' and shopping_cart:
+        if request.method == 'POST' and shopping_cart:
             raise serializers.ValidationError(
                 'Рецепт уже в корзине'
             )
-        if self.context['request'].method == 'DELETE' and not shopping_cart:
+        if request.method == 'DELETE' and not shopping_cart:
             raise serializers.ValidationError(
                 'Ошибка. Рецепт уже был удалён.'
             )

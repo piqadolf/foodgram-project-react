@@ -101,11 +101,9 @@ class SubscriptionListView(ListAPIView):
     permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_queryset(self):
-        queryset = User.objects.filter(
+        return User.objects.filter(
             subscription__user=self.request.user
         )
-
-        return queryset
 
 
 class IngredientViewSet(ReadOnlyModelViewSet):
