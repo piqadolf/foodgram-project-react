@@ -222,7 +222,7 @@ class RecipeGetSerializer(serializers.ModelSerializer):
         return user.is_authenticated and user.shopping_cart.filter(
             recipe=obj.id
         ).exists()
-    
+
     def get_image_url(self, obj):
         return obj.image.url
 
